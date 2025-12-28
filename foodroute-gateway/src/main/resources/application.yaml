@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: foodroute-gateway
+
+  cloud:
+    gateway:
+      routes:
+        - id: dummy-service
+          uri: lb://foodroute-dummy-service
+          predicates:
+            - Path=/foodroute-dummy-service/**
+          filters:
+            - StripPrefix=1
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
