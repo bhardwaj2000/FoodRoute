@@ -1,0 +1,248 @@
+type: collection.insomnia.rest/5.0
+schema_version: "5.1"
+name: FoodRoute
+meta:
+  id: wrk_7902793e3ae94269875d877a80ffea6f
+  created: 1766921099834
+  modified: 1766921099834
+  description: ""
+collection:
+  - name: order-service
+    meta:
+      id: fld_f3ff0c97c8134f299f51d9d30e6e112c
+      created: 1767188273795
+      modified: 1767188273795
+      sortKey: -1767188273795
+      description: ""
+    children:
+      - url: http://localhost:50444/orders
+        name: create order
+        meta:
+          id: req_90675e44fcbb416e9c888eb623fe5a4d
+          created: 1767188292509
+          modified: 1767188547641
+          isPrivate: false
+          description: ""
+          sortKey: -1767188296705
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "userId": "U1",
+              "restaurantId": "R1",
+              "items": [
+                { "itemId": "I1", "quantity": 2 }
+              ]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.2.0
+            description: ""
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/foodroute-order-service/orders
+        name: create order lb
+        meta:
+          id: req_742d9d5039604defa854ad6aebef4620
+          created: 1767188578616
+          modified: 1767189058981
+          isPrivate: false
+          description: ""
+          sortKey: -1767056952940
+        method: POST
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "userId": "U2",
+              "restaurantId": "R1",
+              "items": [
+                { "itemId": "I1", "quantity": 1 }
+              ]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.2.0
+            description: ""
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "http://localhost:50444/orders/5e5adea3-156a-48c1-bca8-794e5cc02c99 "
+        name: Fetch order
+        meta:
+          id: req_064913a7aada48458515011f2f129b67
+          created: 1767188637559
+          modified: 1767189025129
+          isPrivate: false
+          description: ""
+          sortKey: -1767122624822.5
+        method: GET
+        body:
+          mimeType: application/json
+          text: |
+            {
+              "userId": "U1",
+              "restaurantId": "R1",
+              "items": [
+                { "itemId": "I1", "quantity": 2 }
+              ]
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.2.0
+            description: ""
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/foodroute-order-service/orders/4637cbf8-b5b1-434d-b7e1-5583339f0d68
+        name: Fetch order lb
+        meta:
+          id: req_b51b7eb378eb4ab29c50184cf1c16853
+          created: 1767189092606
+          modified: 1767189150212
+          isPrivate: false
+          description: ""
+          sortKey: -1767089788881.25
+        method: GET
+        body:
+          mimeType: application/json
+          text: "\n"
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/12.2.0
+            description: ""
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: dummy-service
+    meta:
+      id: fld_545c608a5d794b0ab9daa2b8ad7654ca
+      created: 1767193094272
+      modified: 1767193094272
+      sortKey: -1767193094272
+      description: ""
+    children:
+      - url: http://localhost:8080/foodroute-dummy-service/dummy/hello
+        name: dummy-service lb
+        meta:
+          id: req_8010edc8574d47568ff9d39b607edcd3
+          created: 1766923530355
+          modified: 1767193284321
+          isPrivate: false
+          description: ""
+          sortKey: -1767193163149
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.2.0
+            description: ""
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:54331/dummy/hello
+        name: dummy-service
+        meta:
+          id: req_f16606b08bfd48acbfbc94b5ee5ff320
+          created: 1766925609175
+          modified: 1767193292395
+          isPrivate: false
+          description: ""
+          sortKey: -1767193163249
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.2.0
+            description: ""
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: Eureka service
+    meta:
+      id: fld_b8087b263563402cb1f97bc738fdaf6e
+      created: 1767193314543
+      modified: 1767193314543
+      sortKey: -1767193314543
+      description: ""
+    children:
+      - url: http://localhost:8761
+        name: eureka service
+        meta:
+          id: req_3316682c382a42a9b15f6876fb3a2464
+          created: 1766921107441
+          modified: 1767193319981
+          isPrivate: false
+          description: ""
+          sortKey: -1767193319944
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/12.2.0
+            description: ""
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_1a2e89362d648d19741cf5cfd767f885cb78e5e7
+    created: 1766921099866
+    modified: 1766921099866
+environments:
+  name: Base Environment
+  meta:
+    id: env_1a2e89362d648d19741cf5cfd767f885cb78e5e7
+    created: 1766921099857
+    modified: 1766921099857
+    isPrivate: false

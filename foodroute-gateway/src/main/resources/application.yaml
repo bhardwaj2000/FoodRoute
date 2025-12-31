@@ -15,6 +15,13 @@ spring:
           filters:
             - StripPrefix=1
 
+        - id: foodroute-order-service
+          uri: lb://foodroute-order-service
+          predicates:
+            - Path=/foodroute-order-service/**
+          filters:
+            - StripPrefix=1
+
 eureka:
   client:
     service-url:
