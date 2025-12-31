@@ -1,0 +1,194 @@
+📄 FoodRoute – Order Service Development Requirements (Tech Lead Spec)
+1️⃣ Objective
+
+Build the Order Service, which acts as the core microservice in the FoodRoute platform.
+The service is responsible for order creation, order persistence, and order state management, without integrating payment or delivery in this phase.
+
+2️⃣ Technology Stack (MANDATORY)
+Layer	Technology
+Language	Java 21
+Framework	Spring Boot 3.2.x
+Architecture	Microservices
+API Style	REST
+Service Discovery	Eureka Client
+Persistence	Spring Data JPA
+Database	MySQL
+Build Tool	Maven
+DTO Style	Java record
+Error Modeling	Java sealed interfaces (where applicable)
+3️⃣ Project Naming & Structure
+📦 Service Name
+foodroute-order-service
+
+📁 Package Structure (Required)
+com.foodroute.order
+ ├── controller
+ ├── service
+ ├── repository
+ ├── domain
+ │    ├── entity
+ │    ├── enums
+ │    └── error
+ ├── dto
+ └── config
+
+4️⃣ Service Responsibilities
+✅ Must Handle
+
+Create new orders
+
+Persist orders in database
+
+Maintain order lifecycle/state
+
+Fetch order by ID
+
+Register with Eureka
+
+❌ Must NOT Handle (Out of Scope)
+
+Payment processing
+
+Delivery assignment
+
+Notification
+
+Saga orchestration
+
+5️⃣ Order Lifecycle (Business Rule)
+
+Order status must follow this state model:
+
+CREATED → PAYMENT_PENDING → PAID → OUT_FOR_DELIVERY → DELIVERED
+
+
+Failure states:
+
+CANCELLED
+
+
+👉 State transitions must be controlled in service layer.
+
+6️⃣ API Contract (Contract-First)
+🔹 Create Order
+
+Endpoint
+
+POST /orders
+
+
+Request (record)
+
+{
+  "userId": "U123",
+  "restaurantId": "R456",
+  "items": [
+    { "itemId": "I1", "quantity": 2 }
+  ]
+}
+
+
+Response
+
+{
+  "orderId": "5e5adea3-156a-48c1-bca8-794e5cc02c99",
+  "status": "CREATED",
+  "totalAmount": 500.00
+}
+
+🔹 Get Order by ID
+
+Endpoint
+
+GET /orders/{orderId}
+
+
+Response
+
+{
+  "orderId": "5e5adea3-156a-48c1-bca8-794e5cc02c99",
+  "status": "CREATED",
+  "totalAmount": 500.00
+}
+
+7️⃣ Data Model (MySQL)
+🗄️ Table: orders
+Column	Type	Notes
+order_id	CHAR(36)	UUID (readable)
+user_id	VARCHAR(50)	
+restaurant_id	VARCHAR(50)	
+status	VARCHAR(30)	Enum
+total_amount	DECIMAL(10,2)	
+created_at	TIMESTAMP	
+
+📌 UUID must be stored in readable format (CHAR(36)).
+
+8️⃣ Domain Modeling Rules
+🔹 DTOs
+
+Must use Java record
+
+Immutable
+
+No business logic
+
+🔹 Entities
+
+Use standard JPA entities
+
+Mutable (required by ORM)
+
+🔹 Errors
+
+Use sealed interfaces for domain-specific errors
+
+Avoid generic RuntimeException where possible
+
+9️⃣ Configuration Requirements
+application.yml
+
+Service must run on random port
+
+Must register with Eureka
+
+MySQL connection required
+
+JPA auto schema update enabled (for dev)
+
+🔁 Service Registration
+
+Service name must be:
+
+foodroute-order-service
+
+
+Must appear in Eureka dashboard
+
+Must support dynamic port allocation
+
+10️⃣ Non-Functional Requirements
+
+Clean layering (Controller → Service → Repository)
+
+No cross-service DB access
+
+No business logic in controllers
+
+Readable logs
+
+API must return proper HTTP status codes
+
+11️⃣ Completion Criteria (Definition of Done)
+
+✔ Service starts successfully
+✔ Registers with Eureka
+✔ MySQL table created
+✔ POST /orders works
+✔ GET /orders/{id} works
+✔ UUID readable in DB
+✔ Code uses Java 21 features correctly
+
+🧠 Architect Note (For Developer)
+
+This service is intentionally kept isolated.
+Integration with Payment, Delivery, and Saga will be introduced in later phases.
