@@ -1,0 +1,200 @@
+📄 FoodRoute – Gateway → Order Service Routing
+(Development Requirements – Tech Lead Spec)
+1️⃣ Objective
+
+Enable external clients to access the Order Service exclusively via API Gateway, enforcing:
+
+Centralized routing
+
+Service abstraction
+
+No direct client access to backend services
+
+By the end of Day-3, clients must never call Order Service directly.
+
+2️⃣ Scope of Day-3
+✅ In Scope
+
+API Gateway routing to Order Service
+
+Path-based routing rules
+
+Request forwarding & response passthrough
+
+Basic validation of routing via Gateway
+
+Service discovery–based routing
+
+❌ Out of Scope
+
+Authentication / Authorization
+
+Rate limiting
+
+Circuit breaker
+
+Payment or Delivery integration
+
+Saga orchestration
+
+(Those come in later days)
+
+3️⃣ Technology Stack (Locked)
+Layer	Technology
+Language	Java 21
+Gateway	Spring Cloud Gateway (WebFlux)
+Service Discovery	Eureka
+Backend Service	foodroute-order-service
+API Style	REST
+Build Tool	Maven
+
+⚠️ No Spring MVC in Gateway (WebFlux only).
+
+4️⃣ Architecture Rule (MANDATORY)
+Client  →  API Gateway  →  Order Service
+
+
+🚫 Client → Order Service (direct) NOT ALLOWED
+
+5️⃣ Service Naming (Strict)
+Component	Name
+Gateway	foodroute-gateway
+Order Service	foodroute-order-service
+
+Routing must use service name, not host/port.
+
+6️⃣ Gateway Routing Requirements
+🔹 Routing Pattern
+
+Gateway must route requests based on path:
+
+External Path	Internal Service
+/orders/**	foodroute-order-service
+🔹 Path Handling Rule
+
+Gateway must strip service-level prefixes if required
+
+Backend service must receive clean paths
+
+Example:
+
+Client → /orders
+Gateway → /orders
+Order Service → /orders
+
+7️⃣ API Contract (Client View)
+🔹 Create Order (Via Gateway)
+
+Request
+
+POST http://localhost:8080/orders
+
+{
+  "userId": "U123",
+  "restaurantId": "R456",
+  "items": [
+    { "itemId": "I1", "quantity": 2 }
+  ]
+}
+
+
+Response
+
+{
+  "orderId": "5e5adea3-156a-48c1-bca8-794e5cc02c99",
+  "status": "CREATED",
+  "totalAmount": 500.00
+}
+
+🔹 Get Order (Via Gateway)
+
+Request
+
+GET http://localhost:8080/orders/{orderId}
+
+
+Response
+
+{
+  "orderId": "5e5adea3-156a-48c1-bca8-794e5cc02c99",
+  "status": "CREATED",
+  "totalAmount": 500.00
+}
+
+
+📌 Response must be identical to Order Service response.
+
+8️⃣ Backend Service Expectations (Order Service)
+Order Service must:
+
+Remain unchanged for routing
+
+Register with Eureka
+
+Support dynamic port
+
+Handle requests transparently
+
+🚫 No gateway-specific logic inside Order Service.
+
+9️⃣ Configuration Requirements (Gateway)
+Gateway must:
+
+Use service discovery (Eureka) for routing
+
+Not hardcode hostnames or ports
+
+Support future extension (filters, security)
+
+🔁 Service Discovery Requirement
+
+Order Service must appear in Eureka as:
+
+FOODROUTE-ORDER-SERVICE
+
+
+Gateway must resolve instances dynamically
+
+Load balancing must work if multiple instances exist
+
+10️⃣ Observability & Validation
+Developer must validate:
+
+Order Service reachable via Gateway
+
+Gateway logs show route matching
+
+Order Service logs show requests coming from Gateway
+
+No 404 / 502 / routing errors
+
+11️⃣ Non-Functional Requirements
+
+Gateway must remain stateless
+
+No blocking code
+
+No business logic in Gateway
+
+Clean route definitions
+
+Backward-compatible routing
+
+12️⃣ Definition of Done (DoD)
+
+Day-3 is DONE when:
+
+✔ Client can create order via Gateway
+✔ Client can fetch order via Gateway
+✔ Order Service not accessed directly
+✔ Gateway routes using service name
+✔ Eureka resolution verified
+✔ No code changes in Order Service
+
+🧠 Architect Notes (Important for Dev)
+
+Gateway is infrastructure, not business logic
+
+Order Service should not know it’s behind a Gateway
+
+All future services (Payment, Delivery) will follow same routing pattern
