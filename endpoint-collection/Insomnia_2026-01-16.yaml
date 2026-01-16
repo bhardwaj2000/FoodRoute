@@ -50,12 +50,12 @@ collection:
             send: true
             store: true
           rebuildPath: true
-      - url: http://localhost:8080/foodroute-order-service/orders
+      - url: http://localhost:8080/orders
         name: create order lb
         meta:
           id: req_742d9d5039604defa854ad6aebef4620
           created: 1767188578616
-          modified: 1767189058981
+          modified: 1768566549183
           isPrivate: false
           description: ""
           sortKey: -1767056952940
@@ -64,7 +64,7 @@ collection:
           mimeType: application/json
           text: |
             {
-              "userId": "U2",
+              "userId": "U1",
               "restaurantId": "R1",
               "items": [
                 { "itemId": "I1", "quantity": 1 }
@@ -120,22 +120,17 @@ collection:
             send: true
             store: true
           rebuildPath: true
-      - url: http://localhost:8080/foodroute-order-service/orders/4637cbf8-b5b1-434d-b7e1-5583339f0d68
+      - url: http://localhost:8080/orders/0f709071-a12e-4fa5-94a5-772f07ab3521
         name: Fetch order lb
         meta:
           id: req_b51b7eb378eb4ab29c50184cf1c16853
           created: 1767189092606
-          modified: 1767189150212
+          modified: 1768569703383
           isPrivate: false
           description: ""
           sortKey: -1767089788881.25
         method: GET
-        body:
-          mimeType: application/json
-          text: "\n"
         headers:
-          - name: Content-Type
-            value: application/json
           - name: User-Agent
             value: insomnia/12.2.0
             description: ""
@@ -221,6 +216,46 @@ collection:
           sortKey: -1767193319944
         method: GET
         headers:
+          - name: User-Agent
+            value: insomnia/12.2.0
+            description: ""
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: payment-service
+    meta:
+      id: fld_9f9386366ae448fa819ec731b836b475
+      created: 1768566652270
+      modified: 1768566652270
+      sortKey: -1768566652270
+      description: ""
+    children:
+      - url: http://localhost:8080/payments
+        name: make payment
+        meta:
+          id: req_9047698c5c244ef1a8498afd4034424f
+          created: 1768566666010
+          modified: 1768569744977
+          isPrivate: false
+          description: ""
+          sortKey: -1768566666010
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"orderId": "80508944-de8a-426b-b8f3-6fbd610b8b1f",
+            	"amount": 500
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
           - name: User-Agent
             value: insomnia/12.2.0
             description: ""

@@ -14,8 +14,8 @@ import java.util.UUID;
 public class Order {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID orderId;
+    @Column(length = 36)
+    private String orderId;
 
     private String userId;
     private String restaurantId;
@@ -26,4 +26,10 @@ public class Order {
     private BigDecimal totalAmount;
 
     private LocalDateTime createdAt;
+
+    @PrePersist
+    void generateId() {
+        this.orderId = UUID.randomUUID().toString();
+        this.createdAt = LocalDateTime.now();
+    }
 }

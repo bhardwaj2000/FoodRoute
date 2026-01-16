@@ -26,7 +26,7 @@ public class OrderController {
 
     // SELECT BIN_TO_UUID(order_id) FROM orders;
     @GetMapping("/{id}")
-    public ResponseEntity<OrderResponse> get(@PathVariable UUID id) {
+    public ResponseEntity<OrderResponse> get(@PathVariable String id) {
         return ResponseEntity.ok(orderService.getOrder(id));
     }
 }

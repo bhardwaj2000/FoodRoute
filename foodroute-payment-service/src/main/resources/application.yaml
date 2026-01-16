@@ -1,9 +1,11 @@
+
 server:
   port: 0
 
+
 spring:
   application:
-    name: foodroute-order-service
+    name: foodroute-payment-service
 
   datasource:
     url: jdbc:mysql://localhost:3306/foodroute
