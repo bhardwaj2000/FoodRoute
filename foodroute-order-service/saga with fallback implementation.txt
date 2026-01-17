@@ -1,0 +1,123 @@
+📘 FoodRoute – Day-5 Summary
+Resilience + Saga Orchestration
+🎯 Objective of Day-5
+
+Introduce failure handling and data consistency in a distributed microservices system by implementing:
+
+Resilience patterns
+
+Saga Orchestration between Order and Payment services
+
+🧠 Problem Addressed
+
+In a distributed system:
+
+Database transactions cannot span multiple services
+
+Partial failures lead to data inconsistency
+
+Example:
+
+Order CREATED → Payment FAILS → Order stuck ❌
+
+✅ Solution Implemented
+1️⃣ Saga Orchestration Pattern
+
+Order Service acts as Saga Orchestrator
+
+It controls the flow and state transitions
+
+Handles success and failure explicitly
+
+Order Service → Payment Service
+       ↳ success → Order PAID
+       ↳ failure → Order CANCELLED (compensation)
+
+2️⃣ Order State Machine (Updated)
+CREATED
+→ PAYMENT_IN_PROGRESS
+→ PAID
+
+Failure:
+→ CANCELLED
+
+
+Order Service owns the state transitions.
+
+3️⃣ Transaction Management Rule
+
+@Transactional is used only for local DB operations
+
+External service calls are NOT part of DB transactions
+
+Distributed rollback is replaced with compensating actions
+
+4️⃣ Compensation Logic
+
+Instead of rollback:
+
+If payment fails or times out → cancel the order
+
+Compensation ensures eventual consistency
+
+5️⃣ Resilience4j Integration
+
+Used to protect Order Service from cascading failures.
+
+Patterns Applied:
+
+Circuit Breaker → Stops calling failing Payment Service
+
+Retry → Handles transient failures
+
+Fallback → Triggers compensation logic
+
+6️⃣ Service-to-Service Communication
+
+Order → Payment uses WebClient
+
+Uses Eureka service name, not hardcoded URLs
+
+WebClient configured with:
+
+@LoadBalanced
+
+Spring Cloud LoadBalancer
+
+7️⃣ API Gateway Rule (Reinforced)
+
+Gateway is only for external clients
+
+Services do NOT call each other via Gateway
+
+Order Service calls Payment Service directly using service discovery
+
+🧪 Failure Scenarios Handled
+Scenario	Outcome
+Payment success	Order → PAID
+Payment failure	Order → CANCELLED
+Payment service down	Circuit opens, Order → CANCELLED
+Timeout / retry exhausted	Compensation triggered
+🧠 Key Learnings (Interview Gold)
+
+Distributed transactions require Saga patterns
+
+DB transactions ≠ distributed consistency
+
+Compensation is a business rollback, not technical rollback
+
+Resilience prevents cascading failures
+
+Service discovery enables dynamic service resolution
+
+🧑‍💼 Interview-Ready Explanation
+
+“We implemented Saga Orchestration where Order Service acts as the coordinator. Local database transactions ensure consistency within a service, while compensating actions handle cross-service failures. Resilience4j prevents cascading failures using retries, circuit breakers, and fallbacks.”
+
+✅ Day-5 Completion Criteria
+
+✔ Order-Payment Saga implemented
+✔ Compensation logic working
+✔ Resilience patterns applied
+✔ No hardcoded service URLs
+✔ Order state remains consistent under failures
