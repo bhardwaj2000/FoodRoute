@@ -2,11 +2,13 @@ package com.foodroute.payment.service.entity;
 
 import com.foodroute.payment.service.constant.PaymentStatus;
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Data
 @Entity
 @Table(name = "payments")
 public class Payment {

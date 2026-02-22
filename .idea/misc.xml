@@ -9,6 +9,8 @@
         <option value="$PROJECT_DIR$/foodroute-dummy-service/pom.xml" />
         <option value="$PROJECT_DIR$/foodroute-order-service/pom.xml" />
         <option value="$PROJECT_DIR$/foodroute-payment-service/pom.xml" />
+        <option value="$PROJECT_DIR$/kafka-installation/pom.xml" />
+        <option value="$PROJECT_DIR$/foodroute-delivery-service/pom.xml" />
       </list>
     </option>
   </component>

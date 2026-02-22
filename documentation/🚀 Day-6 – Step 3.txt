@@ -1,0 +1,183 @@
+🚀 Day-6 – Step 3
+Payment Service Consumes OrderCreatedEvent
+
+Now we remove dependency on REST call.
+Payment Service will react to event instead.
+
+🎯 Goal of Step-3
+
+✔ Payment Service listens to order-events
+✔ Payment is created automatically
+✔ PaymentCompletedEvent is published
+✔ No WebClient involved
+
+We are officially entering Saga Choreography.
+
+🧱 Step 3.1 – Create Same Event Class in Payment Service
+
+Create package:
+
+com.foodroute.payment.service.event
+OrderCreatedEvent.java
+public record OrderCreatedEvent(
+        String orderId,
+        String userId,
+        String restaurantId,
+        BigDecimal amount
+) {}
+
+(Yes, duplicate for now. Later we can move to shared module.)
+
+🧱 Step 3.2 – Create PaymentCompletedEvent
+public record PaymentCompletedEvent(
+        String orderId,
+        String paymentId,
+        String status
+) {}
+🧱 Step 3.3 – Add Kafka Listener in Payment Service
+
+Create:
+
+PaymentEventListener.java
+@Service
+public class PaymentEventListener {
+
+    private final PaymentRepository paymentRepository;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    public PaymentEventListener(PaymentRepository paymentRepository,
+                                KafkaTemplate<String, Object> kafkaTemplate) {
+        this.paymentRepository = paymentRepository;
+        this.kafkaTemplate = kafkaTemplate;
+    }
+
+    @KafkaListener(topics = "order-events", groupId = "payment-group")
+    public void handleOrderCreated(OrderCreatedEvent event) {
+
+        System.out.println("Received OrderCreatedEvent: " + event);
+
+        Payment payment = new Payment();
+        payment.setPaymentId(UUID.randomUUID().toString());
+        payment.setOrderId(event.orderId());
+        payment.setAmount(event.amount());
+        payment.setStatus("SUCCESS");
+        payment.setCreatedAt(LocalDateTime.now());
+
+        paymentRepository.save(payment);
+
+        PaymentCompletedEvent completed =
+                new PaymentCompletedEvent(
+                        event.orderId(),
+                        payment.getPaymentId(),
+                        "SUCCESS"
+                );
+
+        kafkaTemplate.send("payment-events", completed);
+    }
+}
+
+spring:
+  kafka:
+    consumer:
+      group-id: payment-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.value.default.type: com.foodroute.payment.service.event.OrderCreatedEvent
+        spring.json.trusted.packages: "*"
+🧪 Step 3.4 – Test the Flow
+
+1️⃣ Start Kafka
+2️⃣ Start Eureka
+3️⃣ Start Order Service
+4️⃣ Start Payment Service
+
+Now:
+
+POST /orders
+
+Expected flow:
+
+Order Service → publishes OrderCreatedEvent
+Payment Service → receives event
+Payment saved in DB
+PaymentCompletedEvent published
+🧠 What Just Happened?
+
+We replaced:
+
+Order → REST → Payment
+
+With:
+
+Order → Kafka → Payment
+
+No direct dependency.
+
+This is Saga Choreography.
+
+🔎 Verify in DB
+
+Check Payment table:
+
+SELECT * FROM payments;
+
+You should see payment record created automatically.
+
+✅ Step-3 Completion Checklist
+
+✔ Payment listener working
+✔ Payment saved from event
+✔ payment-events topic created
+✔ No WebClient call required
+-----
+we can define consumer-group-id in property file or @kafkaListner any place.
+
+✅ Define group-id in application.yml
+
+✅ OR define it in @KafkaListener
+
+❌ But if both are present, annotation overrides property
+
+They can be different, but you must understand what that means.
+
+In Our architecture:
+
+Service	Group ID
+Payment Service - foodroute-payment-group
+Order Service	- foodroute-order-group
+Delivery Service- foodroute-delivery-group
+
+Each service should have its own group-id.
+
+Why?
+
+Because if they share same group:
+
+group-id: foodroute-group
+
+Then:
+
+Order Service and Payment Service would split partitions
+
+Only one would receive the event
+
+That is WRONG for Saga choreography
+
+🚨 Very Important Concept
+
+If two different services use:
+
+group-id: foodroute-group
+
+Then:
+
+They will compete
+
+Only one service processes the message
+
+Other service will NOT receive it
+
+That breaks event-driven architecture.

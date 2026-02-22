@@ -1,5 +1,6 @@
 package com.foodroute.order.service.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.foodroute.order.service.dto.request.CreateOrderRequest;
 import com.foodroute.order.service.dto.response.OrderResponse;
 import com.foodroute.order.service.service.OrderService;
@@ -20,7 +21,7 @@ public class OrderController {
 
 
     @PostMapping
-    public ResponseEntity<OrderResponse> create(@RequestBody CreateOrderRequest request) {
+    public ResponseEntity<OrderResponse> create(@RequestBody CreateOrderRequest request) throws JsonProcessingException {
         return ResponseEntity.ok(orderService.createOrder(request));
     }
 

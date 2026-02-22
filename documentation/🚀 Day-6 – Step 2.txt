@@ -1,0 +1,93 @@
+🚀 Day-6 – Step 2
+Publish First OrderCreatedEvent (Without Outbox Yet)
+
+⚠️ Important:
+In this step we are NOT implementing Outbox yet.
+We first prove basic event publishing works.
+
+🎯 Goal of Step-2
+
+✔ When Order is created → Event published to Kafka
+✔ Payment Service consumes event
+✔ Payment logic triggered
+✔ Order still works
+
+We are validating async communication first.
+
+🧱 Step 2.1 – Create Event Class (Order Service)
+
+Create:
+
+com.foodroute.order.service.event
+OrderCreatedEvent.java
+public record OrderCreatedEvent(
+        String orderId,
+        String userId,
+        String restaurantId,
+        BigDecimal amount
+) {}
+🧱 Step 2.2 – Inject KafkaTemplate in Order Service
+
+Modify OrderServiceImpl
+
+Add:
+
+private final KafkaTemplate<String, Object> kafkaTemplate;
+
+Update constructor:
+
+public OrderServiceImpl(OrderRepository orderRepository,
+                        KafkaTemplate<String, Object> kafkaTemplate) {
+    this.orderRepository = orderRepository;
+    this.kafkaTemplate = kafkaTemplate;
+}
+🧱 Step 2.3 – Publish Event After Order Save
+
+Inside createOrder()
+After saving order:
+
+OrderCreatedEvent event = new OrderCreatedEvent(
+        order.getOrderId(),
+        order.getUserId(),
+        order.getRestaurantId(),
+        order.getTotalAmount()
+);
+
+kafkaTemplate.send("order-events", order.getOrderId(), event);
+
+Now flow becomes:
+
+Order saved
+→ Publish OrderCreatedEvent
+🧪 Step 2.4 – Test Publishing
+
+1️⃣ Start Kafka
+2️⃣ Start Order Service
+3️⃣ Create order via Gateway
+
+Now check logs.
+You should see something like:
+
+Sending record to topic order-events
+🚦 STOP – Do NOT implement Payment listener yet
+
+First confirm event is being published.
+
+🔎 Optional: Verify Topic Exists
+
+Run inside container:
+
+docker exec -it <kafka-container-id> kafka-topics --list --bootstrap-server localhost:9092
+or
+docker exec -it kafka /bin/sh
+# kafka-topics.sh --list --bootstrap-server localhost:9092
+
+You should see:
+
+order-events
+✅ Step-2 Completion Checklist
+
+✔ Order API works
+✔ Event published
+✔ No Kafka errors
+✔ order-events topic created

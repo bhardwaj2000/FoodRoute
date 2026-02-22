@@ -11,20 +11,26 @@
         <module name="foodroute-dummy-service" />
         <module name="foodroute-discovery" />
       </profile>
-      <profile name="Annotation profile for foodroute-order-service" enabled="true">
+      <profile name="Annotation profile for foodroute-delivery-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
         </processorPath>
+        <module name="foodroute-delivery-service" />
         <module name="foodroute-payment-service" />
         <module name="foodroute-order-service" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="kafka-installation" target="21" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="foodroute-delivery-service" options="-parameters" />
       <module name="foodroute-discovery" options="-parameters" />
       <module name="foodroute-dummy-service" options="-parameters" />
       <module name="foodroute-gateway" options="-parameters" />

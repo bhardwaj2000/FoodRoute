@@ -1,0 +1,13 @@
+docker compose -f docker-compose.yml up -d
+docker images
+docker ps
+docker exec -it kafka /bin/sh
+kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic test-topic
+kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic test-topic
+kafka-console-consumer.sh --topic test-topic --from-beginning --bootstrap-server localhost:9092
+kafka-console-producer.sh --bootstrap-server localhost:9092 --topic test-topic
+kafka-topics.sh --list --bootstrap-server localhost:9092
+
+kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic order-events
+kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic payment-events
+kafka-console-consumer.sh --topic order-events --from-beginning --bootstrap-server localhost:9092

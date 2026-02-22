@@ -1,0 +1,182 @@
+🚀 Day-6 – Step 5
+Implement Outbox Pattern (Production-Grade Reliability)
+🎯 Why We Need Outbox
+
+Right now your flow is:
+
+Save Order
+→ Publish OrderCreatedEvent
+
+⚠️ Problem scenario:
+
+Order saved in DB
+Application crashes
+Event NOT published
+
+System becomes inconsistent.
+
+✅ Outbox Pattern Fixes This
+
+New flow:
+
+Save Order
+Save OutboxEvent (same DB transaction)
+→ Background job publishes event
+→ Mark OutboxEvent as processed
+
+Now DB and event creation are atomic.
+
+🏗 Architecture After Outbox
+Order Service
+  ├── orders table
+  ├── outbox table
+  ├── scheduler publishes events
+  └── Kafka
+🧱 Step 5.1 – Create Outbox Table
+
+In Order DB:
+
+CREATE TABLE outbox (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    aggregate_id VARCHAR(50),
+    event_type VARCHAR(100),
+    payload TEXT,
+    processed BOOLEAN DEFAULT FALSE,
+    created_at DATETIME
+);
+🧱 Step 5.2 – Create Outbox Entity
+
+In Order Service:
+
+@Entity
+@Table(name = "outbox")
+public class OutboxEvent {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String aggregateId;
+    private String eventType;
+
+    @Lob
+    private String payload;
+
+    private boolean processed;
+
+    private LocalDateTime createdAt;
+}
+🧱 Step 5.3 – Create Repository
+public interface OutboxRepository extends JpaRepository<OutboxEvent, Long> {
+
+    List<OutboxEvent> findByProcessedFalse();
+}
+🧱 Step 5.4 – Modify Order Creation
+
+Replace direct Kafka publish.
+
+Instead of:
+
+kafkaTemplate.send("order-events", event);
+
+Do this inside @Transactional method:
+
+OrderCreatedEvent event = new OrderCreatedEvent(
+        order.getOrderId(),
+        order.getUserId(),
+        order.getRestaurantId(),
+        order.getTotalAmount()
+);
+
+OutboxEvent outbox = new OutboxEvent();
+outbox.setAggregateId(order.getOrderId());
+outbox.setEventType("OrderCreatedEvent");
+outbox.setPayload(objectMapper.writeValueAsString(event));
+outbox.setProcessed(false);
+outbox.setCreatedAt(LocalDateTime.now());
+
+outboxRepository.save(outbox);
+
+Now:
+
+Order + OutboxEvent saved in same transaction
+
+No Kafka publish here.
+
+🧱 Step 5.5 – Create Background Publisher
+
+Enable scheduling in main class:
+
+@EnableScheduling
+
+Create:
+
+@Component
+public class OutboxPublisher {
+
+    private final OutboxRepository repository;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+
+    public OutboxPublisher(OutboxRepository repository,
+                           KafkaTemplate<String, String> kafkaTemplate) {
+        this.repository = repository;
+        this.kafkaTemplate = kafkaTemplate;
+    }
+
+    @Scheduled(fixedDelay = 5000)
+    public void publishEvents() {
+
+        List<OutboxEvent> events = repository.findByProcessedFalse();
+
+        for (OutboxEvent event : events) {
+		OrderCreatedEvent eventObject =
+        		objectMapper.readValue(
+                	event.getPayload(),
+                	OrderCreatedEvent.class
+        		);
+
+	kafkaTemplate.send("order-events",
+        	event.getAggregateId(),
+        	eventObject);
+
+
+            event.setProcessed(true);
+            repository.save(event);
+        }
+    }
+}
+🧪 Step 5.6 – Test Outbox
+
+1️⃣ Stop Payment Service
+2️⃣ Create Order
+3️⃣ Check DB:
+
+SELECT * FROM outbox;
+
+You should see:
+
+processed = false
+
+4️⃣ Start Payment Service
+5️⃣ Scheduler publishes
+6️⃣ processed = true
+
+This proves reliability.
+
+🧠 What You Just Built
+
+You now have:
+
+✔ Async Saga
+✔ Event-driven architecture
+✔ Reliable event publishing
+✔ Crash-safe design
+✔ Eventually consistent workflow
+
+This is real production architecture.
+
+🧠 Interview-Level Explanation
+
+“We implemented the Outbox pattern to ensure that event publishing is transactionally consistent with database state changes. Events are persisted first and then asynchronously published to Kafka.”
+
+That answer alone signals senior backend engineer.

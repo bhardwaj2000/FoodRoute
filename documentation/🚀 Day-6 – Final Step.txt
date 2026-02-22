@@ -1,0 +1,171 @@
+🚀 Day-6 – Final Step
+Add foodroute-delivery-service
+
+This makes the architecture look like a real Swiggy/Uber backend.
+
+🎯 Goal
+
+When:
+
+PaymentCompletedEvent (SUCCESS)
+
+Then:
+
+Delivery Service assigns rider
+
+Fully async. No REST calls.
+
+🏗 Final Architecture After This
+Order Service
+   ↓ OrderCreatedEvent
+Kafka
+   ↓
+Payment Service
+   ↓ PaymentCompletedEvent
+Kafka
+   ↓
+Order Service (update status)
+   ↓
+Delivery Service (assign rider)
+
+Fully event-driven chain.
+
+🧱 Step 1 – Create New Microservice
+
+Create new Spring Boot project:
+
+foodroute-delivery-service
+Dependencies:
+
+spring-boot-starter-web
+
+spring-boot-starter-data-jpa
+
+spring-kafka
+
+spring-cloud-starter-netflix-eureka-client
+
+mysql-connector-j
+
+spring-boot-starter-test
+
+Use same:
+
+Boot version
+
+Cloud version
+
+Consistency is critical.
+
+🧱 Step 2 – Configure Kafka
+
+application.yml:
+
+spring:
+  application:
+    name: foodroute-delivery-service
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    consumer:
+      group-id: delivery-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.value.default.type: com.foodroute.delivery.service.event.PaymentCompletedEvent
+        spring.json.trusted.packages: "*"
+
+Different group-id = different consumer copy.
+
+🧱 Step 3 – Create Event Class
+public record PaymentCompletedEvent(
+        String orderId,
+        String paymentId,
+        String status
+) {}
+
+Must match JSON structure.
+
+🧱 Step 4 – Create Delivery Entity
+@Entity
+public class Delivery {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String orderId;
+    private String riderName;
+    private String status;
+    private LocalDateTime assignedAt;
+}
+🧱 Step 5 – Repository
+public interface DeliveryRepository
+        extends JpaRepository<Delivery, Long> {
+}
+🧱 Step 6 – Kafka Listener
+@Service
+public class DeliveryEventListener {
+
+    private final DeliveryRepository repository;
+
+    public DeliveryEventListener(DeliveryRepository repository) {
+        this.repository = repository;
+    }
+
+    @KafkaListener(topics = "payment-events")
+    public void handlePaymentCompleted(PaymentCompletedEvent event) {
+
+        if (!"SUCCESS".equals(event.status())) {
+            return;
+        }
+
+        Delivery delivery = new Delivery();
+        delivery.setOrderId(event.orderId());
+        delivery.setRiderName("RIDER-" + ThreadLocalRandom.current().nextInt(100));
+        delivery.setStatus("ASSIGNED");
+        delivery.setAssignedAt(LocalDateTime.now());
+
+        repository.save(delivery);
+
+        System.out.println("Delivery assigned for order: " + event.orderId());
+    }
+}
+🧪 Test Full Chain
+
+Start:
+
+1️⃣ Kafka
+2️⃣ Eureka
+3️⃣ Order Service
+4️⃣ Payment Service
+5️⃣ Delivery Service
+
+Now:
+
+POST /orders
+
+Expected flow:
+
+Order saved
+→ OrderCreatedEvent
+→ Payment saved
+→ PaymentCompletedEvent
+→ Order updated to PAID
+→ Delivery assigned
+
+Check DB:
+
+SELECT * FROM deliveries;
+
+You should see assigned rider.
+
+mysql> select * from delivery where order_id="bf57f643-e427-4da2-a93f-d61a6036b218";
++----+----------------------------+--------------------------------------+------------+----------+
+| id | assigned_at                | order_id                             | rider_name | status   |
++----+----------------------------+--------------------------------------+------------+----------+
+|  7 | 2026-02-22 06:35:17.597075 | bf57f643-e427-4da2-a93f-d61a6036b218 | RIDER-67   | ASSIGNED |
++----+----------------------------+--------------------------------------+------------+----------+

@@ -1,0 +1,138 @@
+🚀 Day-6 – Step 4
+Order Service listens to PaymentCompletedEvent
+🎯 Goal of Step-4
+
+✔ Order Service consumes payment-events
+✔ Order status updates to PAID or CANCELLED
+✔ No REST call involved
+✔ Full async choreography working
+
+🧱 Step 4.1 – Create Event Class in Order Service
+
+Create:
+
+com.foodroute.order.service.event
+PaymentCompletedEvent.java
+public record PaymentCompletedEvent(
+        String orderId,
+        String paymentId,
+        String status
+) {}
+
+⚠ Must match JSON structure produced by Payment Service.
+
+🧱 Step 4.2 – Configure Consumer Properly
+
+In Order Service application.yml ensure:
+
+spring:
+  kafka:
+    consumer:
+      group-id: order-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.value.default.type: com.foodroute.order.service.event.PaymentCompletedEvent
+        spring.json.trusted.packages: "*"
+
+Important:
+
+Use different group-id from Payment Service
+
+Use ErrorHandlingDeserializer
+
+Explicitly define target class
+
+🧱 Step 4.3 – Create Listener in Order Service
+
+Create:
+
+@Service
+public class PaymentEventListener {
+
+    private final OrderRepository orderRepository;
+
+    public PaymentEventListener(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
+
+    @KafkaListener(topics = "payment-events")
+    public void handlePaymentCompleted(PaymentCompletedEvent event) {
+
+        System.out.println("Received PaymentCompletedEvent: " + event);
+
+        Order order = orderRepository
+                .findById(event.orderId())
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if ("SUCCESS".equals(event.status())) {
+            order.setStatus(OrderStatus.PAID);
+        } else {
+            order.setStatus(OrderStatus.CANCELLED);
+        }
+
+        orderRepository.save(order);
+    }
+}
+🧪 Step 4.4 – Test Full Async Flow
+
+Restart everything:
+
+1️⃣ Kafka
+2️⃣ Eureka
+3️⃣ Order Service
+4️⃣ Payment Service
+
+Now:
+
+POST /orders
+
+Expected flow:
+
+Order saved (CREATED)
+→ OrderCreatedEvent published
+→ Payment consumes
+→ Payment saved
+→ PaymentCompletedEvent published
+→ Order consumes
+→ Order updated to PAID
+🧠 What You Just Achieved
+
+You moved from:
+
+Saga Orchestration (sync)
+
+To:
+
+Saga Choreography (async)
+
+No direct calls between services.
+
+Loose coupling achieved.
+
+🧠 Architecture After Step-4
+Client
+ → Gateway
+   → Order Service
+        ↳ publishes OrderCreatedEvent
+   → Payment Service
+        ↳ consumes OrderCreatedEvent
+        ↳ publishes PaymentCompletedEvent
+   → Order Service
+        ↳ consumes PaymentCompletedEvent
+
+Fully event-driven.
+
+🧪 Verify in DB
+
+Check:
+
+SELECT status FROM orders;
+
+It should change from:
+
+CREATED → PAID
+
+Without any REST call.
