@@ -1,8 +1,6 @@
 package com.foodroute.order.service.exception;
 
-public final class OrderNotFoundError implements OrderError {
+public class OrderNotFoundError extends RuntimeException{
 
-    public String message() {
-        return "Order not found";
-    }
+    public OrderNotFoundError(String msg) {super(msg);}
 }

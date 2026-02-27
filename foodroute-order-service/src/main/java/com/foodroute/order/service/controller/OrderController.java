@@ -2,12 +2,11 @@ package com.foodroute.order.service.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.foodroute.order.service.dto.request.CreateOrderRequest;
+import com.foodroute.order.service.dto.response.OrderCancelResponse;
 import com.foodroute.order.service.dto.response.OrderResponse;
 import com.foodroute.order.service.service.OrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/orders")
@@ -29,5 +28,11 @@ public class OrderController {
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponse> get(@PathVariable String id) {
         return ResponseEntity.ok(orderService.getOrder(id));
+    }
+
+    @PatchMapping("/{orderId}/cancel")
+    public ResponseEntity<OrderCancelResponse> cancelOrder(@PathVariable String orderId) throws JsonProcessingException {
+        OrderCancelResponse orderCancelResponse = orderService.cancelOrder(orderId);
+        return ResponseEntity.ok(orderCancelResponse);
     }
 }

@@ -1,8 +1,6 @@
 package com.foodroute.order.service.exception;
 
-public final class InvalidOrderError implements OrderError{
+public class InvalidOrderError extends RuntimeException{
 
-    public String message() {
-        return "Order data is invalid";
-    }
+    public InvalidOrderError(String msg){super(msg);}
 }

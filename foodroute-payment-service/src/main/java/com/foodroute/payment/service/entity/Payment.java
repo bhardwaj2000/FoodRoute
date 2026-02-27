@@ -17,7 +17,7 @@ public class Payment {
     @Column(length = 36)
     private String paymentId;
 
-    @Column(nullable = false, length = 36)
+    @Column(nullable = false, length = 36, unique = true)
     private String orderId;
 
     @Column(nullable = false)

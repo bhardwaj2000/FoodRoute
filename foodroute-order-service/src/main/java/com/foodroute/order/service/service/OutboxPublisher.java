@@ -2,6 +2,7 @@ package com.foodroute.order.service.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.foodroute.order.service.dto.request.OrderCancelledEvent;
 import com.foodroute.order.service.entity.OutboxEvent;
 import com.foodroute.order.service.event.OrderCreatedEvent;
 import com.foodroute.order.service.repo.OutboxRepository;
@@ -32,17 +33,27 @@ public class OutboxPublisher {
 
         List<OutboxEvent> events = repository.findByProcessedFalse();
 
-        log.info("Order-event started publishing");
         for (OutboxEvent event : events) {
-            OrderCreatedEvent eventObject =
-                    objectMapper.readValue(
-                            event.getPayload(),
-                            OrderCreatedEvent.class
-                    );
-            kafkaTemplate.send("order-events",
-                    event.getAggregateId(),
-                    eventObject);
-
+            log.info("Order-event started publishing for orderId {}", event.getAggregateId());
+            if("OrderCreatedEvent".equals(event.getEventType())) {
+                OrderCreatedEvent eventObject =
+                        objectMapper.readValue(
+                                event.getPayload(),
+                                OrderCreatedEvent.class
+                        );
+                kafkaTemplate.send("order-events",
+                        event.getAggregateId(),
+                        eventObject);
+            } else if ("OrderCancelEvent".equals(event.getEventType())) {
+                OrderCancelledEvent orderCancelledEvent =
+                        objectMapper.readValue(
+                                event.getPayload(),
+                                OrderCancelledEvent.class
+                        );
+                kafkaTemplate.send("order-cancelled-events",
+                        event.getAggregateId(),
+                        orderCancelledEvent);
+            }
             event.setProcessed(true);
             repository.save(event);
             log.info("Order-event published: {}", event);

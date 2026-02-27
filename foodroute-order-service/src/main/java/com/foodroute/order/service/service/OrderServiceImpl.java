@@ -3,35 +3,36 @@ package com.foodroute.order.service.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.foodroute.order.service.constant.OrderStatus;
+import com.foodroute.order.service.constant.PaymentStatus;
 import com.foodroute.order.service.dto.request.CreateOrderRequest;
+import com.foodroute.order.service.dto.request.OrderCancelledEvent;
+import com.foodroute.order.service.dto.response.OrderCancelResponse;
 import com.foodroute.order.service.dto.response.OrderResponse;
-import com.foodroute.order.service.dto.response.PaymentResponse;
 import com.foodroute.order.service.entity.Order;
 import com.foodroute.order.service.entity.OutboxEvent;
 import com.foodroute.order.service.event.OrderCreatedEvent;
+import com.foodroute.order.service.exception.CancellationExpired;
+import com.foodroute.order.service.exception.InvalidOrderError;
+import com.foodroute.order.service.exception.OrderNotFoundError;
 import com.foodroute.order.service.repo.OrderRepository;
 import com.foodroute.order.service.repo.OutboxRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Slf4j
 @Service
 public class OrderServiceImpl implements OrderService{
 
-    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final OrderRepository orderRepository;
-    private final PaymentClient paymentClient;
     private final OutboxRepository outboxRepository;
 
-    public OrderServiceImpl(KafkaTemplate<String, Object> kafkaTemplate, OrderRepository orderRepository, PaymentClient paymentClient, OutboxRepository outboxRepository) {
-        this.kafkaTemplate = kafkaTemplate;
+    public OrderServiceImpl(OrderRepository orderRepository, OutboxRepository outboxRepository) {
         this.orderRepository = orderRepository;
-        this.paymentClient = paymentClient;
         this.outboxRepository = outboxRepository;
     }
 
@@ -45,15 +46,11 @@ public class OrderServiceImpl implements OrderService{
         order.setRestaurantId(request.restaurantId());
         order.setStatus(OrderStatus.CREATED);
         order.setCreatedAt(LocalDateTime.now());
-        order.setTotalAmount(BigDecimal.valueOf(500));
+        double totalAmount = request.items().stream().mapToDouble(item -> item.price() * item.quantity()).sum();
+        order.setTotalAmount(BigDecimal.valueOf(totalAmount));
 
         order = orderRepository.save(order);
-
-        // STEP 2: Move to PAYMENT_IN_PROGRESS
-//        order.setStatus(OrderStatus.PAYMENT_IN_PROGRESS);
-//        orderRepository.save(order);
-        // ---- DB TRANSACTION ENDS HERE ----
-
+        log.info("order saved in orders with order id {}", order.getOrderId());
         OrderCreatedEvent event = new OrderCreatedEvent(
                 order.getOrderId(),
                 order.getUserId(),
@@ -61,6 +58,16 @@ public class OrderServiceImpl implements OrderService{
                 order.getTotalAmount()
         );
 
+        saveOrderCreateOutbox(order, event);
+
+        return new OrderResponse(
+                order.getOrderId(),
+                order.getStatus(),
+                order.getTotalAmount()
+        );
+    }
+
+    private void saveOrderCreateOutbox(Order order, OrderCreatedEvent event) throws JsonProcessingException {
         OutboxEvent outbox = new OutboxEvent();
         outbox.setAggregateId(order.getOrderId());
         outbox.setEventType("OrderCreatedEvent");
@@ -70,38 +77,64 @@ public class OrderServiceImpl implements OrderService{
         outbox.setCreatedAt(LocalDateTime.now());
 
         outboxRepository.save(outbox);
-
-//        kafkaTemplate.send("order-events", order.getOrderId(), event);
-//        log.info("Publish OrderCreatedEvent: {}", event);
-
-        // STEP 3: Call Payment Service (outside transaction)
-        /*try {
-            PaymentResponse paymentResponse = paymentClient.initiatePayment(order.getOrderId(), order.getTotalAmount());
-
-            if("SUCCESS".equals(paymentResponse.status().name())){
-                order.setStatus(OrderStatus.PAID);
-            } else {
-                order.setStatus(OrderStatus.CANCELLED);
-            }
-        } catch (Exception e) {
-            // STEP 4: Compensation
-            order.setStatus(OrderStatus.CANCELLED);
-        }*/
-
-
-        // step 5: final update
-//        orderRepository.save(order);
-        return new OrderResponse(
-                order.getOrderId(),
-                order.getStatus(),
-                order.getTotalAmount()
-        );
+        log.info("order saved in OutboxEvent for order creation with aggregate id {}", outbox.getAggregateId());
     }
 
     @Override
     public OrderResponse getOrder(String orderId) {
-        Order order = orderRepository.findById(orderId).orElseThrow(() -> new RuntimeException("Order not found"));
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> new OrderNotFoundError("Order not found for order id: " + orderId));
         return new OrderResponse(order.getOrderId(),order.getStatus(),order.getTotalAmount());
+    }
+
+    @Override
+    @Transactional
+    public OrderCancelResponse cancelOrder(String orderId) throws JsonProcessingException {
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundError("Order not found for order id: " + orderId));
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new InvalidOrderError("Order is already cancelled for order id: " + orderId);
+        }
+
+        long minutes = Duration.between(
+                order.getCreatedAt(),
+                LocalDateTime.now()
+        ).toMinutes();
+
+        if (minutes > 5) {
+            throw new CancellationExpired("Cancellation window expired for order id: " + orderId + "with minutes > 1 : " + minutes);
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
+
+        OrderCancelledEvent event = new OrderCancelledEvent(
+                orderId,
+                "User Cancelled"
+        );
+
+        saveOrderCancelOutbox(event);  // reuse outbox pattern
+
+        return new OrderCancelResponse(
+                order.getOrderId(),
+                order.getStatus(),
+                PaymentStatus.REFUNDED,
+                order.getTotalAmount()
+        );
+    }
+
+    private void saveOrderCancelOutbox(OrderCancelledEvent event) throws JsonProcessingException {
+        OutboxEvent outbox = new OutboxEvent();
+        outbox.setAggregateId(event.orderId());
+        outbox.setEventType("OrderCancelEvent");
+        ObjectMapper objectMapper = new ObjectMapper();
+        outbox.setPayload(objectMapper.writeValueAsString(event));
+        outbox.setProcessed(false);
+        outbox.setCreatedAt(LocalDateTime.now());
+
+        outboxRepository.save(outbox);
+        log.info("order saved in OutboxEvent for user cancellation with aggregate id {}", outbox.getAggregateId());
     }
 
 }
